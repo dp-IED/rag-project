@@ -9,21 +9,22 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Loader2, Upload } from "lucide-react";
+import { Loader2, Search, Upload } from "lucide-react";
 import { api } from "../src/lib/api";
 
 export function LandingPage() {
   const [checking, setChecking] = useState(true);
-  const [documentCount, setDocumentCount] = useState(0);
+  const [userDocs, setUserDocs] = useState<string[]>([]);
   const navigate = useNavigate();
 
   useEffect(() => {
     const checkDocuments = async () => {
       try {
-        const { count } = await api.checkDocuments();
-        setDocumentCount(count);
+        const { files } = await api.checkDocuments();
+        console.log("fileNames", files);
+        setUserDocs(files);
       } catch (error) {
-        setDocumentCount(0);
+        console.error("Failed to check documents", error);
       } finally {
         setChecking(false);
       }
@@ -67,26 +68,42 @@ export function LandingPage() {
             </ul>
           </div>
 
-          {documentCount > 0 && (
+          {userDocs.length > 0 && (
             <div className="bg-green-50 p-4 rounded-lg">
-              <p className="text-green-800">
-                {documentCount} document{documentCount !== 1 ? "s" : ""} already
-                uploaded and ready for analysis
-              </p>
+              <h3 className="font-medium text-green-800 mb-2">
+                Your Documents:
+              </h3>
+              <ul className="list-disc list-inside text-green-700 space-y-1">
+                {userDocs.map((doc) => (
+                  <li key={doc}>{doc}</li>
+                ))}
+              </ul>
             </div>
           )}
         </CardContent>
-        <CardFooter className="flex justify-center">
+
+        <CardFooter className="flex justify-center align-center space-x-4">
           <Button
             size="lg"
             onClick={() => navigate("/upload")}
             className="w-full max-w-sm"
           >
             <Upload className="w-5 h-5 mr-2" />
-            {documentCount > 0
+            {userDocs.length > 0
               ? "Upload Another Document"
               : "Upload Your First Document"}
           </Button>
+
+          {userDocs.length > 0 && (
+            <Button
+              size="lg"
+              onClick={() => navigate("/query")}
+              className="w-full max-w-sm"
+            >
+              <Search className="w-5 h-5 mr-2" />
+              Query Documents
+            </Button>
+          )}
         </CardFooter>
       </Card>
     </div>
