@@ -1,4 +1,5 @@
 from collections import defaultdict
+from pathlib import Path
 import nltk
 from nltk.tokenize import sent_tokenize, word_tokenize
 from nltk.corpus import stopwords
@@ -10,12 +11,17 @@ import numpy as np
 
 import string
 
+
+UPLOAD_DIR = Path("uploads")
+
 class PolicyAnalyzer:
     def __init__(self):
         # Download NLTK data at startup
         nltk.download('punkt', quiet=True)
         nltk.download('stopwords', quiet=True)
         nltk.download('wordnet', quiet=True)
+        
+        
         
         self.lemmatizer = WordNetLemmatizer()
         self.stop_words = set(stopwords.words('english'))
@@ -27,7 +33,13 @@ class PolicyAnalyzer:
             stop_words='english',
             ngram_range=(1, 2)
         )
-        self.documents_text = []  # Store all document text for topic modeling
+        self.documents_text = self.get_existing_documents() 
+        
+        
+    def get_existing_documents(self):
+        return [f.read_text() for f in UPLOAD_DIR.iterdir() if f.is_file() and not f.name.startswith(".")]
+        
+        
         
     async def analyze_document(self, text: str, doc_id: str):
         """Async version of document analysis with dynamic topic extraction"""
@@ -94,7 +106,7 @@ class PolicyAnalyzer:
     def extract_topics_from_text(self, text: str) -> Set[str]:
         """Extract topics for a specific piece of text"""
         if not self.all_topics:  # If no topics extracted yet
-            return set()
+            return set("general")
             
         try:
             # Transform the text using the same vectorizer

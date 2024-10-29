@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Card,
@@ -9,10 +9,9 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Loader2, Search, Upload, ArrowLeft } from "lucide-react";
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
 import { PolicyResult } from "./types";
 import { api } from "../src/lib/api";
 import MarkdownContent from "./lib/MarkdownContent";
@@ -23,8 +22,22 @@ export function QueryPage() {
   const [streamedResponse, setStreamedResponse] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [topics, setTopics] = useState<string[]>([]);
   const responseRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
+
+  useEffect(() => {
+    const fetchTopics = async () => {
+      try {
+        const data = await api.getTopics();
+        setTopics(data.topics);
+      } catch (error) {
+        console.error("Failed to fetch topics", error);
+      }
+    };
+
+    fetchTopics();
+  }, []);
 
   const handleSearch = async () => {
     if (!query.trim()) return;
@@ -36,6 +49,7 @@ export function QueryPage() {
     try {
       const data = await api.queryDocuments(query);
       setResults(data.responses);
+      console.log(data.responses);
 
       // Handle streaming response
       await api.summarizeFindings(data.responses, query, {
@@ -85,6 +99,11 @@ export function QueryPage() {
             <CardTitle>Policy Analysis System</CardTitle>
             <CardDescription>
               Analyze policy documents using natural language queries
+              {topics.map((topic) => (
+                <Badge key={topic} variant="outline" className="ml-2">
+                  {topic}
+                </Badge>
+              ))}
             </CardDescription>
           </CardHeader>
           <CardContent>

@@ -37,7 +37,7 @@ export function UploadPage() {
     };
 
     checkDocuments();
-  }, []);
+  }, [uploadComplete]);
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = event.target.files?.[0];
@@ -141,19 +141,16 @@ export function UploadPage() {
                   hover:file:bg-blue-100"
               />
 
-              {userDocs.length > 0 ? (
-                <CardFooter className="flex flex-col space-y-3">
-                  <Button
-                    onClick={() => setUploadComplete(false)}
-                    className="w-full"
-                  >
-                    {isUploading ? (
-                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    ) : (
-                      <Upload className="w-4 h-4 mr-2" />
-                    )}
-                    {isUploading ? "Uploading..." : "Upload Document"}
-                  </Button>
+              <CardFooter className="flex flex-col space-y-3">
+                <Button onClick={() => handleUpload()} className="w-full">
+                  {isUploading ? (
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  ) : (
+                    <Upload className="w-4 h-4 mr-2" />
+                  )}
+                  {isUploading ? "Uploading..." : "Upload Document"}
+                </Button>
+                {userDocs.length > 0 ? (
                   <Button
                     onClick={() => navigate("/query")}
                     variant="secondary"
@@ -162,17 +159,15 @@ export function UploadPage() {
                     <Search className="w-4 h-4 mr-2" />
                     Continue to Query
                   </Button>
-                </CardFooter>
-              ) : (
-                status && (
-                  <Alert
-                    variant={
-                      status.type === "error" ? "destructive" : "default"
-                    }
-                  >
-                    <AlertDescription>{status.message}</AlertDescription>
-                  </Alert>
-                )
+                ) : null}
+              </CardFooter>
+
+              {status && (
+                <Alert
+                  variant={status.type === "error" ? "destructive" : "default"}
+                >
+                  <AlertDescription>{status.message}</AlertDescription>
+                </Alert>
               )}
             </div>
           </CardContent>
@@ -189,6 +184,14 @@ export function UploadPage() {
                 <Upload className="w-4 h-4 mr-2" />
               )}
               {isUploading ? "Uploading..." : "Upload Document"}
+            </Button>
+            <Button
+              size="lg"
+              onClick={() => navigate("/query")}
+              className="w-full max-w-sm"
+            >
+              <Search className="w-4 h-4 mr-2" />
+              Query Documents
             </Button>
           </CardFooter>
         )}

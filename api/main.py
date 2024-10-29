@@ -114,7 +114,8 @@ async def get_topics():
 @app.get("/get_existing_documents/", summary="Get existing documents")
 async def get_existing_documents():
     """Get list of existing documents, without including .git .DS_Store etc."""
-    return {"files": [f.name for f in UPLOAD_DIR.iterdir() if f.is_file() and not f.name.startswith(".")]}
+    return {"files": [f.name for f in UPLOAD_DIR.iterdir() if f.is_file() and not f.name.startswith(".")], 
+            "file_contents": [f.read_text() for f in UPLOAD_DIR.iterdir() if f.is_file() and not f.name.startswith(".")]}
     
     
 

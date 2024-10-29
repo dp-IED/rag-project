@@ -123,8 +123,10 @@ ${results.map((result) => result.statement).join("\n")}`;
       const error = await response.json();
       throw new Error(error.detail || "Query failed");
     }
+    const j = await response.json();
+    console.log(j);
 
-    return response.json();
+    return j;
   },
 
   async getTopics(): Promise<TopicResponse> {
