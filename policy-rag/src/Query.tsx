@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Card,
@@ -9,27 +9,64 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Loader2, Search, Upload, ArrowLeft } from "lucide-react";
 import { PolicyResult } from "./types";
 import { api } from "../src/lib/api";
+import MarkdownContent from "./lib/MarkdownContent";
 
 export function QueryPage() {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<PolicyResult[]>([]);
+  const [streamedResponse, setStreamedResponse] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [topics, setTopics] = useState<string[]>([]);
+  const responseRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
+
+  useEffect(() => {
+    const fetchTopics = async () => {
+      try {
+        const data = await api.getTopics();
+        setTopics(data.topics);
+      } catch (error) {
+        console.error("Failed to fetch topics", error);
+      }
+    };
+
+    fetchTopics();
+  }, []);
 
   const handleSearch = async () => {
     if (!query.trim()) return;
 
     setLoading(true);
     setError(null);
+    setStreamedResponse("");
 
     try {
       const data = await api.queryDocuments(query);
       setResults(data.responses);
+      console.log(data.responses);
+
+      // Handle streaming response
+      await api.summarizeFindings(data.responses, query, {
+        onToken: (token) => {
+          setStreamedResponse((prev) => prev + token);
+          // Auto-scroll to bottom as new content arrives
+          if (responseRef.current) {
+            responseRef.current.scrollTop = responseRef.current.scrollHeight;
+          }
+        },
+        onComplete: (fullResponse) => {
+          setStreamedResponse(fullResponse);
+        },
+        onError: (error) => {
+          setError(error.message);
+        },
+      });
     } catch (error) {
       setError(error instanceof Error ? error.message : "Search failed");
       setResults([]);
@@ -40,24 +77,33 @@ export function QueryPage() {
 
   return (
     <div className="min-h-screen bg-slate-50 p-4">
-      <Button variant="ghost" onClick={() => navigate("/")} className="mb-4">
-        <ArrowLeft className="w-4 h-4 mr-2" />
-        Back to Home
-      </Button>
+      <div className="flex justify-between  mx-auto">
+        <Button variant="ghost" onClick={() => navigate("/")} className="mb-4">
+          <ArrowLeft className="w-4 h-4 mr-2" />
+          Back to Home
+        </Button>
+
+        <Button
+          variant="outline"
+          onClick={() => navigate("/upload")}
+          className="mb-4"
+        >
+          <Upload className="w-4 h-4 mr-2" />
+          Upload Document
+        </Button>
+      </div>
 
       <div className="w-full max-w-4xl mx-auto space-y-4">
-        <div className="flex justify-end">
-          <Button onClick={() => navigate("/upload")} variant="outline">
-            <Upload className="w-4 h-4 mr-2" />
-            Upload More Documents
-          </Button>
-        </div>
-
         <Card>
           <CardHeader>
-            <CardTitle>Policy Query System</CardTitle>
+            <CardTitle>Policy Analysis System</CardTitle>
             <CardDescription>
-              Search through policy documents using natural language queries
+              Analyze policy documents using natural language queries
+              {topics.map((topic) => (
+                <Badge key={topic} variant="outline" className="ml-2">
+                  {topic}
+                </Badge>
+              ))}
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -69,16 +115,13 @@ export function QueryPage() {
                 onKeyDown={(e) => e.key === "Enter" && handleSearch()}
                 className="flex-1"
               />
-              <Button
-                onClick={handleSearch}
-                disabled={loading || !query.trim()}
-              >
+              <Button onClick={handleSearch} disabled={loading}>
                 {loading ? (
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                 ) : (
                   <Search className="w-4 h-4 mr-2" />
                 )}
-                Search
+                Analyze
               </Button>
             </div>
           </CardContent>
@@ -91,51 +134,29 @@ export function QueryPage() {
           </Alert>
         )}
 
-        {results.map((result, index) => (
-          <Card key={index}>
-            <CardHeader>
-              <CardTitle className="text-lg">Source: {result.source}</CardTitle>
-              <CardDescription>
-                Relevance Score: {result.score.toFixed(2)}
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div>
-                <h4 className="font-medium mb-2">Statement</h4>
-                <p className="text-sm text-slate-600">{result.statement}</p>
+        <div className="grid grid-cols-1 gap-6">
+          {streamedResponse && <MarkdownContent content={streamedResponse} />}
+
+          {results.length > 0 && (
+            <div className="bg-white rounded-lg shadow-sm p-6">
+              <div className="text-sm text-slate-600 mb-4">
+                Source Documents
               </div>
-              {result.context.length > 0 && (
-                <div>
-                  <h4 className="font-medium mb-2">Context</h4>
-                  <div className="bg-slate-50 p-3 rounded-md text-sm text-slate-600">
-                    {result.context.map((ctx, i) => (
-                      <p
-                        key={i}
-                        className={
-                          ctx === result.statement ? "font-medium" : ""
-                        }
-                      >
-                        {ctx}
-                      </p>
-                    ))}
+              <div className="space-y-4">
+                {results.map((result, index) => (
+                  <div key={index} className="p-4 bg-slate-50 rounded-lg">
+                    <div className="text-sm text-slate-500 mb-2">
+                      Source: {result.source} (Score: {result.score.toFixed(2)})
+                    </div>
+                    <div className="text-sm text-slate-700">
+                      {result.statement}
+                    </div>
                   </div>
-                </div>
-              )}
-              {result.topics.length > 0 && (
-                <div className="flex gap-2 flex-wrap">
-                  {result.topics.map((topic, i) => (
-                    <span
-                      key={i}
-                      className="px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-xs"
-                    >
-                      {topic}
-                    </span>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        ))}
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

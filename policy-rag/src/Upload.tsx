@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Card,
@@ -19,7 +19,25 @@ export function UploadPage() {
   const [status, setStatus] = useState<StatusMessage | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadComplete, setUploadComplete] = useState(false);
+  const [userDocs, setUserDocs] = useState<string[]>([]);
+  const [checking, setChecking] = useState(true);
   const navigate = useNavigate();
+
+  useEffect(() => {
+    const checkDocuments = async () => {
+      try {
+        const { files } = await api.checkDocuments();
+        console.log("fileNames", files);
+        setUserDocs(files);
+      } catch (error) {
+        console.error("Failed to check documents", error);
+      } finally {
+        setChecking(false);
+      }
+    };
+
+    checkDocuments();
+  }, [uploadComplete]);
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = event.target.files?.[0];
@@ -30,6 +48,14 @@ export function UploadPage() {
     setFile(selectedFile || null);
     setStatus(null);
   };
+
+  if (checking) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <Loader2 className="w-8 h-8 animate-spin" />
+      </div>
+    );
+  }
 
   const handleUpload = async () => {
     if (!file) {
@@ -76,6 +102,18 @@ export function UploadPage() {
               ? "Document uploaded successfully! What would you like to do next?"
               : "Start by uploading a text document to analyze"}
           </CardDescription>
+          {userDocs.length > 0 && (
+            <div className="bg-green-50 p-4 rounded-lg">
+              <h3 className="font-medium text-green-800 mb-2">
+                Your Documents:
+              </h3>
+              <ul className="list-disc list-inside text-green-700 space-y-1">
+                {userDocs.map((doc) => (
+                  <li key={doc}>{doc}</li>
+                ))}
+              </ul>
+            </div>
+          )}
         </CardHeader>
 
         {!uploadComplete ? (
@@ -86,7 +124,6 @@ export function UploadPage() {
               </h3>
               <ul className="list-disc list-inside text-blue-700 space-y-1">
                 <li>Text (.txt) files only</li>
-                <li>Policy-related content</li>
                 <li>Clear, structured text</li>
               </ul>
             </div>
@@ -103,41 +140,58 @@ export function UploadPage() {
                   file:bg-blue-50 file:text-blue-700
                   hover:file:bg-blue-100"
               />
-              <Button
-                onClick={handleUpload}
-                disabled={!file || isUploading}
-                className="w-full"
-              >
-                {isUploading ? (
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                ) : (
-                  <Upload className="w-4 h-4 mr-2" />
-                )}
-                {isUploading ? "Uploading..." : "Upload Document"}
-              </Button>
-            </div>
 
-            {status && (
-              <Alert
-                variant={status.type === "error" ? "destructive" : "default"}
-              >
-                <AlertDescription>{status.message}</AlertDescription>
-              </Alert>
-            )}
+              <CardFooter className="flex flex-col space-y-3">
+                <Button onClick={() => handleUpload()} className="w-full">
+                  {isUploading ? (
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  ) : (
+                    <Upload className="w-4 h-4 mr-2" />
+                  )}
+                  {isUploading ? "Uploading..." : "Upload Document"}
+                </Button>
+                {userDocs.length > 0 ? (
+                  <Button
+                    onClick={() => navigate("/query")}
+                    variant="secondary"
+                    className="w-full"
+                  >
+                    <Search className="w-4 h-4 mr-2" />
+                    Continue to Query
+                  </Button>
+                ) : null}
+              </CardFooter>
+
+              {status && (
+                <Alert
+                  variant={status.type === "error" ? "destructive" : "default"}
+                >
+                  <AlertDescription>{status.message}</AlertDescription>
+                </Alert>
+              )}
+            </div>
           </CardContent>
         ) : (
-          <CardFooter className="flex flex-col space-y-3">
-            <Button onClick={() => setUploadComplete(false)} className="w-full">
-              <Upload className="w-4 h-4 mr-2" />
-              Upload Another Document
+          <CardFooter className="flex justify-center align-center space-x-4">
+            <Button
+              size="lg"
+              onClick={() => navigate("/upload")}
+              className="w-full max-w-sm"
+            >
+              {isUploading ? (
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              ) : (
+                <Upload className="w-4 h-4 mr-2" />
+              )}
+              {isUploading ? "Uploading..." : "Upload Document"}
             </Button>
             <Button
+              size="lg"
               onClick={() => navigate("/query")}
-              variant="secondary"
-              className="w-full"
+              className="w-full max-w-sm"
             >
               <Search className="w-4 h-4 mr-2" />
-              Continue to Query
+              Query Documents
             </Button>
           </CardFooter>
         )}
